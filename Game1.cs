@@ -1,6 +1,9 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace SpaceShooter
 {
@@ -8,11 +11,11 @@ namespace SpaceShooter
     {
         private GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
-
-        //medlemsvariabler
-        Texture2D ship_texture; //skeppets texture
-        Vector2 ship_vector; //skeppets kordinater
-        Vector2 ship_speed; //skeppets hastighet
+        Player player;
+        PrintText printText;
+        List<Enemy> enemies;
+        List<GoldCoin> goldCoins;
+        Texture2D goldCoinSprite;
 
         public Game1()
         {
@@ -23,21 +26,31 @@ namespace SpaceShooter
 
         protected override void Initialize()
         {
-            // TODO: Add your initialization logic here
-            ship_vector.X = 0;
-            ship_vector.Y = 0;
-            ship_speed.X = 2.5f;
-            ship_speed.Y = 4.5f;
-
+            goldCoins = new List<GoldCoin>();
             base.Initialize();
         }
 
         protected override void LoadContent()
         {
-            // TODO: use this.Content to load your game content here
-            ship_texture = Content.Load<Texture2D>("images/player/ship");
-            _spriteBatch = new SpriteBatch(GraphicsDevice);
             
+            player =  new Player(Content.Load<Texture2D>("images/player/ship"), 380, 400, 2.5f, 4.5f);
+            printText = new PrintText(Content.Load<SpriteFont>("myFont"));
+
+            //skapa fiender
+            enemies = new List<Enemy>();
+            Random random = new Random();
+            Texture2D tmpSprite = Content.Load<Texture2D>("images/enemies/mine");
+            for (int i = 0; i < 10; i++)
+            {
+                int rndX = random.Next(0, Window.ClientBounds.Width - tmpSprite.Width);
+                int rndY = random.Next(0, Window.ClientBounds.Height/2);
+                Enemy temp = new Enemy(tmpSprite, rndX, rndY);
+                enemies.Add(temp);
+            }
+
+            goldCoinSprite = Content.Load<Texture2D>("images/powerups/coin");
+
+                _spriteBatch = new SpriteBatch(GraphicsDevice);
         }
 
         protected override void UnloadContent()
@@ -48,68 +61,71 @@ namespace SpaceShooter
         protected override void Update(GameTime gameTime)
         {
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
+            {
                 Exit();
-
-            KeyboardState keyboardSate = Keyboard.GetState();
-
-            
-            if (ship_vector.X <= Window.ClientBounds.Width - ship_texture.Width && ship_vector.X >= 0)
-            {
-                if (keyboardSate.IsKeyDown(Keys.Right))
-                {
-                    ship_vector.X += ship_speed.X;
-                }
-                if (keyboardSate.IsKeyDown(Keys.Left))
-                {
-                    ship_vector.X -= ship_speed.X;
-                }
             }
-            
-            if (ship_vector.Y <= Window.ClientBounds.Height - ship_texture.Height && ship_vector.Y >= 0)
+            player.Update(Window);
+            foreach (Enemy e in enemies)
             {
-                if (keyboardSate.IsKeyDown(Keys.Down))
+                if (e.IsAlive)
                 {
-                    ship_vector.Y += ship_speed.Y;
-                    ship_vector.Normalize();
+                    if (e.CheckCollision(player))
+                    {
+                        this.Exit();
+                    }
+                    e.Update(Window);
                 }
-                if (keyboardSate.IsKeyDown(Keys.Up))
+                else
                 {
-                    ship_vector.Y -= ship_speed.Y;
+                    enemies.Remove(e);
                 }
             }
 
-            if (ship_vector.X < 0)
+            Random random = new Random();
+            int newCoin = random.Next(1, 200);
+            if (newCoin == 1)
             {
-                ship_vector.X = 0;
+                int rndX = random.Next(0, Window.ClientBounds.Width - goldCoinSprite.Width);
+                int rndY = random.Next(0, Window.ClientBounds.Height - goldCoinSprite.Height);
+                goldCoins.Add(new GoldCoin(goldCoinSprite, rndX, rndY, gameTime));
             }
-            if (ship_vector.X > Window.ClientBounds.Width - ship_texture.Width)
+            foreach (GoldCoin gc in goldCoins.ToList())
             {
-                ship_vector.X = Window.ClientBounds.Width - ship_texture.Width;
+                if (gc.IsAlive)
+                {
+                    gc.Update(gameTime);
+                    if (gc.CheckCollision(player))
+                    {
+                        goldCoins.Remove(gc);
+                        player.Points++;
+                    }
+                }
+                else
+                {
+                    goldCoins.Remove(gc);
+                }
             }
-
-            if (ship_vector.Y < 0)
-            {
-                ship_vector.Y = 0;
-            }
-            if (ship_vector.Y > Window.ClientBounds.Height - ship_texture.Height)
-            {
-                ship_vector.Y = Window.ClientBounds.Height - ship_texture.Height;
-            }
-
-            base.Update(gameTime);
         }
+            
 
         protected override void Draw(GameTime gameTime)
         {
             GraphicsDevice.Clear(Color.Black);
-
-            // TODO: Add your drawing code here
             _spriteBatch.Begin();
-            _spriteBatch.Draw(ship_texture, ship_vector, Color.White);
+            player.Draw(_spriteBatch);
+            foreach (Enemy e in enemies)
+            {
+                e.Draw(_spriteBatch);
+            }
+            //printText.Print("Test Skrift :)", _spriteBatch, 0, 0);
+            foreach (GoldCoin gc in goldCoins)
+            {
+                gc.Draw(_spriteBatch);
+                printText.Print("points: " + player.Points, _spriteBatch, 0, 0);
+            }
             _spriteBatch.End();
 
             base.Draw(gameTime);
-
         }
     }
 }
