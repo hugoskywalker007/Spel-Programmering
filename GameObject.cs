@@ -19,7 +19,7 @@ namespace SpaceShooter
         }
 
         //rita
-        public void Draw(SpriteBatch spriteBatch)
+        public virtual void Draw(SpriteBatch spriteBatch)
         {
             spriteBatch.Draw(texture, vector, Color.White);
         }

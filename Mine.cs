@@ -20,6 +20,7 @@ namespace SpaceShooter
             {
                 speed.X *= -1;
             }
+            vector.Y += speed.Y;
             if (vector.Y > window.ClientBounds.Height)
             {
                 isAlive = false;
